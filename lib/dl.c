@@ -52,9 +52,13 @@ void *dlopen(const char *path, int mode) {
     return dlopen_ex(path, mode, NULL, 0);
 }
 
-// Function to resolve a symbol's address from a loaded module
-void *dlsym(void *handle, const char *name) {
-    void *addr = 0;
+// Function to retrieve the address of a symbol from a loaded module
+void *dlsym(void *handle, const char *name) { 
+    void* addr = NULL; // Holds the resolved symbol address
+
+    // Call the symbol resolution function and pass the handle and name
     dynlib_dlsym((int)(long long)handle, name, &addr);
+    
+    // Return the address of the resolved symbol
     return addr;
 }
