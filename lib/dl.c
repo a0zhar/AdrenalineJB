@@ -13,17 +13,37 @@ int dynlib_get_info_ex(int handle, int unknown, struct module_info_ex* info);
 // Function to resolve a symbol's address in a module
 long long dynlib_dlsym(int handle, const char* name, void** addr);
 
-// Custom implementation of dlopen with extended capabilities
-void *dlopen_ex(const char *path, int mode /*ignored*/, void *data, size_t data_len) {
-    int handle = 0;
+//
+// Custom implementation of the dlopen() with extended capabilities
+void *dlopen_ex(const char *path, int mode /* ignored */, void *data, size_t data_len) {
+    int handle = 0; // Handle for the loaded module
+
+    // Load the module from the specified path. Return NULL on failure
     if (dynlib_load_prx(path, 0, &handle, 0))
-        return 0;
-    struct module_info_ex mi;
-    mi.st_size = sizeof(mi);
+        return NULL;
+
+    // Define and Initialize structure to hold module information
+    struct module_info_ex mi = { .st_size = sizeof(struct module_info_ex) };
+
+    // Get information about the loaded module. Return NULL on failure
     if (dynlib_get_info_ex(handle, 0, &mi))
-        return 0;
-    if (mi.ref_count < 2)
-        ((int(*)(size_t, void *, void *))mi.init_proc_addr)(data_len, data, 0);
+        return NULL;
+
+    // If the module's reference count is less than 2, we try to Call the 
+    // initialization function?
+    if (mi.ref_count < 2) {
+        // Custom/Private typedef function pointer, only used by dlopen_ex() that
+        // acts as a replacement for the previous method of doing a: Function ptr
+        // cast and then direct invocation.
+        typedef int (*dlUtilsFunctionInit)(size_t, void *, void *);
+        
+        // Cast the initialization procedure address to the function pointer type.
+        // Then we Execute the initialization function with the provided data
+        dlUtilsFunctionInit init_func = (dlUtilsFunctionInit)mi.init_proc_addr;
+        init_func(data_len, data, NULL);
+    }
+
+    // Return the handle as a pointer
     return (void *)(long long)handle;
 }
 
